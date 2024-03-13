@@ -6,30 +6,22 @@ Created on Thu Dec 10 21:41:19 2020
 """
 import numpy as np
 
-
-import sys
-sys.path.append(r"C:\Users\lazar\Desktop\PhD\data")
 import nsf_unif as nsf
 import calc_cdpdf as cd_pr
 from nprm_corr import kendall_matrix
-import matplotlib.pyplot as plt
-
-from scipy.ndimage import gaussian_filter
-
 import edistr_funcs as edf
-from nprm_copula import non_prm_dens
-# from KS2D import ks2d2s
+
+
 
 class flow_mixed_vine():
     
-    def __init__(self, n_dims, z_inf):
+    def __init__(self, n_dims):
         """
         Arguments:
             n_dims = number of dimensions of the vine model
             
         """    
         self.n_dims = n_dims
-        self.z_inf = z_inf
         
     def fit_flow_margin(self,samples,n_layers,n_units,is_continuous,
                         dropout_pr=0,cond_samples=None):
@@ -104,13 +96,7 @@ class flow_mixed_vine():
             else:
                 copula_tf=copula
             copula=copula[rnd_idx[:n_samp]]
-            # plt.figure()
-            # plt.hist(copula,bins=20)
-            # plt.show()
-            
-            # plt.figure()
-            # plt.hist(copula[rnd_idx[:n_samp]])
-            # plt.show()
+
         else:
             # Distributional transform in the discrete case
             if is_continuous==False:
@@ -120,9 +106,6 @@ class flow_mixed_vine():
             flow_samples=flow_samples[0]
         
         return flow_samples, copula
-    
-    def merge_cpmf(samples, sort=False):
-        flat_array=np.concatenate(samples)
         
     
     def fit_flow_cond_margin(self,samples,n_layers,n_units,is_continuous,
@@ -306,92 +289,38 @@ class flow_mixed_vine():
                 tree_idx +=1
                 print('Tree '+str(tree_idx)+' conditional margins done')
         return emp_copulas, copulas, margins, sort_idx
-    
-    def build_allpairs(self,samples,is_continuous=False):
-        
-        # flow parameters
-        n_layers=1
-        n_units=4
-        dropout_pr=0.0
-        
-        # uniform distr to compare copulas
-        unif2d=np.random.random(size=(samples.shape[1],2))
-        
-        # initialize arrays
-        n_cops=int((self.n_dims**2-self.n_dims)/2)
-        margins=np.empty((self.n_dims), dtype=object)
-        pit_margins=np.empty((self.n_dims), dtype=object)
-        emp_copulas=np.empty((n_cops), dtype=object)
-        copulas=np.empty((n_cops), dtype=object)
-        cop_dens_flow=np.empty((n_cops), dtype=object)
-        ks_pval=np.zeros(n_cops)
-        
-        sorted_samples, sort_idx= self.sort_variables(samples)
-        # sorted_samples = samples
-        # sort_idx=[x for x in range(5)]
-        # fit margins first and get PIT data
-        for i in range(self.n_dims):
-            margins[i],pit_margins[i]=self.fit_flow_cond_margin(sorted_samples[i,:],n_layers,
-                                       n_units,is_continuous)
-        
-            print('Margin '+str(i)+' done')  
-        # tree index that increases from top to bottom tree
-        tree_idx=1
-        cop_count=0
-        
-        while tree_idx<self.n_dims:
-            var_set= [x for x in range(tree_idx,self.n_dims)]
-            for i in range(len(var_set)):
-                if self.z_inf==True:
-                    copula_train=np.hstack((pit_margins[tree_idx-1],
-                                        pit_margins[var_set[i]])) 
-                else:
-                    copula_train=np.hstack((pit_margins[tree_idx-1],
-                                        pit_margins[var_set[i]]))   
-                # emp_copulas[cop_count]=np.hstack((pit_margins[tree_idx-1],
-                #                         pit_margins[var_set[i]]))
-                # copulas[cop_count],cop_dens_flow[cop_count]=self.fit_flow_copula(
-                #     copula_train,
-                #     n_layers,n_units,
-                #     dropout_pr)
-                
-                # ks_pval[cop_count]=ks2d2s(copula_train,unif2d)[1]
-                cop_hist=np.histogram2d(x=copula_train[:,0],
-                        y=copula_train[:,1],bins=[100,100])
-                copulas[cop_count]=gaussian_filter(cop_hist[0], sigma=12)
-                
-                cop_count +=1
-            tree_idx +=1
-            print('Tree '+str(tree_idx)+' done')
-        return emp_copulas, copulas, cop_dens_flow, margins, sort_idx,ks_pval
+
     
     def build_Cvine_allcd(self,samples, is_continuous=False):
         
-        # flow parameters
+        # normalizing flow parameters
         n_layers=1
         n_units=4
         dropout_pr=0.0
         
-        # initialize arrays
+        # number of copulas in the vine
         n_cops=int((self.n_dims**2-self.n_dims)/2)
-        margins=np.empty((self.n_dims+n_cops-1), dtype=object)
-        real_margs=np.empty((self.n_dims+n_cops-1), dtype=object)
-        pit_margins=np.empty((self.n_dims), dtype=object)
-        copulas=np.empty((n_cops), dtype=object)
-        emp_copulas=np.empty((n_cops), dtype=object)
-        cop_dens_flow=np.empty((n_cops), dtype=object)
         
-        cond_margins=np.empty((self.n_dims-2,self.n_dims-1),dtype=object)
-        cond_pit_margins=np.empty((self.n_dims-2,self.n_dims-1),dtype=object)
-        # cond_pmf =np.empty((self.n_dims-2,self.n_dims-1,30),dtype=object)       
-        # sort variables according to sums of kendall taus
-        # sorted_samples, sort_idx= self.sort_variables(samples)
-        sorted_samples = samples
-        sort_idx=[x for x in range(5)]
+        # initialize arrays
+        margins=np.empty((self.n_dims+n_cops-1), dtype=object)  # flow margins
+        real_margs=np.empty((self.n_dims+n_cops-1), dtype=object) # real margins
+        pit_margins=np.empty((self.n_dims), dtype=object) # transformed margins
+        copulas=np.empty((n_cops), dtype=object)  # flow copulas (samples)
+        emp_copulas=np.empty((n_cops), dtype=object) # empirical copulas
+        cop_dens_flow=np.empty((n_cops), dtype=object) # flow copula pdfs
+        
+        cond_margins=np.empty((self.n_dims-2,self.n_dims-1),
+                              dtype=object) # conditional margins
+        cond_pit_margins=np.empty((self.n_dims-2,self.n_dims-1),
+                                  dtype=object) # conditional transformed margins
+
+        sorted_samples, sort_idx= self.sort_variables(samples)
+
         # fit margins first and get PIT data
         for i in range(self.n_dims):
-            margins[i],pit_margins[i]=self.fit_flow_cond_margin(sorted_samples[i,:],n_layers,
-                                       n_units,is_continuous)
+            margins[i],pit_margins[i]=self.fit_flow_cond_margin(
+                                            sorted_samples[i,:],n_layers,
+                                            n_units,is_continuous)
         
             print('Margin '+str(i)+' done')  
         # tree index that increases from top to bottom tree
@@ -404,13 +333,6 @@ class flow_mixed_vine():
                 for i in range(len(var_set)):
                     
                     print('var= '+str(i))
-                    # plt.figure()
-                    # if is_continuous==True:
-                    #     cond_loop_range=cond_margins.shape[2]
-                    # else:
-                    #     cond_loop_range=len(np.unique(margins[tree_idx-1]))
-                    # for j in range(cond_loop_range):
-                        
                         
                     #train copulas of 1st tree
                     copula_train=np.hstack((pit_margins[tree_idx-1],
@@ -776,105 +698,3 @@ class flow_mixed_vine():
                 print('Tree '+str(tree_idx)+' conditional margins done')
         return cop_dens_flow
     
-    def build_Cvine_prune(self,samples, is_continuous=False):
-        
-        # flow parameters
-        n_layers=1
-        n_units=4
-        dropout_pr=0.0
-        
-        # initialize arrays
-        n_cops=int((self.n_dims**2-self.n_dims)/2)
-        margins=np.empty((self.n_dims+n_cops-1), dtype=object)
-        real_margs=np.empty((self.n_dims+n_cops-1), dtype=object)
-        pit_margins=np.empty((self.n_dims), dtype=object)
-        copulas=np.empty((n_cops), dtype=object)
-        emp_copulas=np.empty((n_cops), dtype=object)
-        cop_dens_flow=np.empty((n_cops), dtype=object)
-        cop_tree_idx=np.zeros((n_cops,3))
-        
-        cond_margins=np.empty((self.n_dims-2,self.n_dims-1),dtype=object)
-        cond_pit_margins=np.empty((self.n_dims-2,self.n_dims-1),dtype=object)
-      
-        # sort variables according to sums of kendall taus
-        sorted_samples, sort_idx= self.sort_variables(samples)
-        # sorted_samples = samples
-        # fit margins first and get PIT data
-        for i in range(self.n_dims):
-            margins[i],pit_margins[i]=self.fit_flow_cond_margin(sorted_samples[i,:],n_layers,
-                                       n_units,is_continuous)
-        
-            print('Margin '+str(i)+' done')  
-        # tree index that increases from top to bottom tree
-        tree_idx=1
-        cop_count=0
-        marg_count=self.n_dims
-        while tree_idx<self.n_dims:
-            var_set= [x for x in range(tree_idx,self.n_dims)]
-            if tree_idx==1:
-                for i in range(len(var_set)):
-                    # calculate conditional pmfs
-                    print('var= '+str(i))
-
-                    cond_margins[tree_idx-1,i]=cd_pr.c_pmf(margins[var_set[i]],
-                                          margins[tree_idx-1],is_continuous=is_continuous)
-
-                    temp_cond_marg=cond_margins[tree_idx-1,i]
-
-                    
-                    margins[marg_count],cond_pit_margins[tree_idx-1,i]=self.fit_flow_cond_margin(
-                        temp_cond_marg,n_layers,n_units,is_continuous,pit_margins[var_set[i]])
-                
-                    real_margs[marg_count]=cond_margins[tree_idx-1,i]    
-                    marg_count+=1
-
-
-                    #train copulas of 1st tree
-                    copula_train=np.hstack((pit_margins[tree_idx-1],
-                                            pit_margins[var_set[i]]))
-                    emp_copulas[cop_count]=copula_train
-                    
-                    cop_tree_idx[cop_count,0]=tree_idx-1
-                    cop_tree_idx[cop_count,1]=var_set[i]
-                    cop_tree_idx[cop_count,2]=tree_idx
-                    
-                    copulas[cop_count],cop_dens_flow[cop_count]=self.fit_flow_copula(copula_train,
-                                                                                      n_layers,n_units,
-                                                                                      dropout_pr)
-                    cop_count +=1
-                print('Tree '+str(tree_idx)+' done')
-                tree_idx +=1
-            else:
-                for i in range(len(var_set)):
-                   
-                    copula_train=np.hstack((cond_pit_margins[tree_idx-2,tree_idx-2],
-                                            cond_pit_margins[tree_idx-2,var_set[i]-1]))
-                    emp_copulas[cop_count]=copula_train
-
-                    cop_tree_idx[cop_count,0]=tree_idx-1
-                    cop_tree_idx[cop_count,1]=var_set[i]
-                    cop_tree_idx[cop_count,2]=tree_idx
-
-                    copulas[cop_count],cop_dens_flow[cop_count]=self.fit_flow_copula(copula_train,
-                                                                                      n_layers,n_units,
-                                                                                      dropout_pr)
-                    cop_count +=1
-                print('Tree '+str(tree_idx)+' copulas done')
-                
-                # calculate conditional pmfs
-                if len(var_set)>=2:
-                    
-                    for i in range(len(var_set)):
-                        cond_margins[tree_idx-1,var_set[i]-1]=cd_pr.c_pmf(cond_margins[tree_idx-2,var_set[i]-1],
-                                                                            cond_margins[tree_idx-2,tree_idx-2],
-                                                                            is_continuous=is_continuous)
-                        margins[marg_count],cond_pit_margins[tree_idx-1,var_set[i]-1]=self.fit_flow_cond_margin(
-                            cond_margins[tree_idx-1,var_set[i]-1],n_layers,n_units,is_continuous,
-                            cond_pit_margins[tree_idx-2,var_set[i]-1])
-                        real_margs[marg_count]=cond_margins[tree_idx-1,var_set[i]-1]
-                        marg_count+=1
-                        plt.suptitle('Conditional margins: '+str(var_set[i])
-                                 +' Tree: '+str(tree_idx))
-                tree_idx +=1
-                print('Tree '+str(tree_idx)+' conditional margins done')
-        return emp_copulas, copulas, cop_dens_flow, margins,real_margs, sort_idx
