@@ -100,7 +100,7 @@ class ns_flow():
         # transform = CompositeTransform(transforms)
 
 
-        num_iter = 100
+        num_iter = 1000
         
         self.flow = Flow(transform, base_dist).to(device)
         optimizer = optim.Adam(self.flow.parameters())
@@ -117,9 +117,9 @@ class ns_flow():
             loss = -self.flow.log_prob(inputs=x).mean()
             loss.backward()
             optimizer.step()
-            if i % 400 ==0:
-                print(str(i))
-                print(str(loss))
+            # if i % 400 ==0:
+            #     print(str(i))
+            #     print(str(loss))
         
         return self.flow
     
