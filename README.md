@@ -5,7 +5,7 @@ This repository contains code that was used in the paper [Mixed vine copula flow
 Given continuous or discrete joint observations, it builds a C-Vine and fits NSF models for the margins and the pair copulas of the joint distribution. Doing so, it wraps normalizing flow-based density estimators from [nflows](https://github.com/bayesiains/nflows)
 
 
-```
+```python
 import numpy as np
 import flow_vine as flow_vine
 import matplotlib.pyplot as plt
