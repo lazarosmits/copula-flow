@@ -64,6 +64,7 @@ for i in range(dim-1):
         icount+=1
 ```
 
-![image](https://github.com/lazarosmits/copula-flow/assets/68554438/0358ac46-c0c1-45ca-9473-8b5eca63b379)
+![joints5d_continuous](https://github.com/lazarosmits/copula-flow/assets/68554438/70c5518e-6587-44e5-be77-c7da1e506343)
+
 
 
