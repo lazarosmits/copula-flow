@@ -91,7 +91,7 @@ sns.histplot(y=samples[0,:], fill=True,ec='k', linewidth=0.5, bins=50, ax=g.ax_m
 
 # Fitting a C-vine with NSF-based copulas to data 
 
-To fit a C-vine with NSF-based copulas to data, we create an instance of the **flow_vine class and use the **build_Cvine function. It outputs the emprical copulas, NSF copula densities, samples from those densities, the margins which were also fitted with NSF and the order of the variables sorted according to Kendall's tau. 
+To fit a C-vine with NSF-based copulas to data, we create an instance of the **flow_vine class and use the **build_Cvine function. It outputs the empirical copulas, NSF copula densities, samples from those densities, the margins which were also fitted with NSF and the order of the variables sorted according to Kendall's tau. 
 
 
 ```python
@@ -111,10 +111,13 @@ After fitting we can visualize the margins, the emprical copulas and the copula 
 plt.figure()
 plt.rc('font',size=12)
 for i in range(dim):
-    plt.subplot(2,3,i+1)
+    plt.subplot(1,5,i+1)
     plt.hist(samples[var_order[i],:],bins=50,color='b',alpha=0.5,label='real')
     plt.hist(marginals[i],bins=50,color='r',alpha=0.5,label='flow')
+    plt.title('Margin '+str(i+1))
+    plt.xlabel('value')
     if i==0:
+        plt.ylabel('count')
         plt.legend()
 
 
