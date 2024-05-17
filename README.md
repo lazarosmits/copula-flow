@@ -37,7 +37,7 @@ samples = vine.rvs(n_samp).T
 samples=samples+np.abs(np.min(samples)) # bring to positive values for NSF fitting
 ```
 
-The simulated joint observations can be visualized per pair in order to inspect how their joint distributions look like. The choice of Clayton copulas for entangling the variables leads to statistical dependencies with heavy tails which is where using copulas is advantageous over other methods.
+The simulated joint observations can be visualized per pair in order to inspect how their joint distributions look like. The choice of Clayton copulas for entangling the variables leads to statistical dependencies with heavy tails. In general, when one is presented with data that exhibit skewed distributions and concentration of probability mass in the tails, using copulas to describe multivariate dependencies is advantageous over other methods that focus on central tendencies.
 
 ```python
 # visualize samples per each pair to inspect joint distributions 
@@ -87,6 +87,99 @@ sns.histplot(x=samples[1,:], fill=True,ec='k', linewidth=0.5, bins=50, ax=g.ax_m
 sns.histplot(y=samples[0,:], fill=True,ec='k', linewidth=0.5, bins=50, ax=g.ax_marg_y)
 ```
 ![joints5d_continuous](https://github.com/lazarosmits/copula-flow/assets/68554438/13cf1511-6cb7-48a8-ba16-7240dbc0694a)
+
+
+# Fitting a C-vine with NSF-based copulas to data 
+
+To fit a C-vine with NSF-based copulas to data, we create an instance of the **flow_vine class and use the **build_Cvine function. It outputs the emprical copulas, NSF copula densities, samples from those densities, the margins which were also fitted with NSF and the order of the variables sorted according to Kendall's tau. 
+
+
+```python
+dim=samples.shape[0]
+
+vine_5d = flow_vine.flow_mixed_vine(n_dims=dim)
+(emp_copulas, copulas, cop_densities,
+  marginals, r_margins, var_order) = vine_5d.build_Cvine(
+      samples,is_continuous=True)
+      
+```
+
+After fitting we can visualize the margins, the emprical copulas and the copula densities
+
+```python
+# plot histograms of the flow margins s the real margins
+plt.figure()
+plt.rc('font',size=12)
+for i in range(dim):
+    plt.subplot(2,3,i+1)
+    plt.hist(samples[var_order[i],:],bins=50,color='b',alpha=0.5,label='real')
+    plt.hist(marginals[i],bins=50,color='r',alpha=0.5,label='flow')
+    if i==0:
+        plt.legend()
+
+
+# plot empirical copulas
+plt.figure()
+plt.rc('font',size=14)
+# index to arrange the subplots like an upper triangular matrix
+cop_idx= np.identity(dim-1)
+cop_idx[np.triu_indices(dim-1)]=1
+# index to position the subplots in the right place
+icount=1
+# index to keep track of the copulas being plotted
+cop_count=0
+# index to track labels of y axis
+ylab_count=0
+for i in range(dim-1):
+    for j in range(dim-1):
+        if np.any(cop_idx[i,j]==1):
+            plt.subplot(dim-1,dim-1,icount)
+            plt.scatter(emp_copulas[cop_count][:,0],emp_copulas[cop_count][:,1],
+                        s=2,alpha=0.1)
+            plt.xlabel(xlabels[cop_count])
+            if i==j: # only label y axis of leftmost panel
+                plt.ylabel(ylabels[ylab_count])
+                ylab_count+=1
+            plt.xticks([])
+            plt.yticks([])
+            cop_count+=1
+        icount+=1
+plt.show()
+
+
+# plot copula densities
+plt.figure()
+cop_idx= np.identity(dim-1)
+cop_idx[np.triu_indices(dim-1)]=1
+icount=1
+cop_count=0
+ylab_count=0
+xx=np.linspace(0,1,200)
+for i in range(dim-1):
+    for j in range(dim-1):
+        if np.any(cop_idx[i,j]==1):
+            plt.subplot(dim-1,dim-1,icount)
+            if cop_count==len(copulas)-1:
+                plt.pcolor(xx,xx,cop_densities[cop_count].reshape(len(xx),len(xx)),
+                           shading='auto')
+                plt.xlabel(xlabels[cop_count])
+                if i==j:
+                    plt.ylabel(ylabels[ylab_count])
+                    ylab_count+=1
+            else:
+                plt.pcolor(xx,xx,cop_densities[cop_count].reshape(len(xx),len(xx)),
+                           shading='auto')
+                plt.xlabel(xlabels[cop_count])
+                if i==j:
+                    plt.ylabel(ylabels[ylab_count])
+                    ylab_count+=1
+            cop_count+=1
+            plt.yticks([])
+            plt.xticks([])
+        icount+=1
+plt.suptitle('Flow Copula densities')
+plt.show()
+```
 
 
 
