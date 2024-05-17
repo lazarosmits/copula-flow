@@ -63,3 +63,6 @@ for i in range(dim-1):
             cop_count+=1
         icount+=1
 ```
+
+![image](https://github.com/lazarosmits/copula-flow/assets/68554438/c4cd9722-9c8b-4492-afd9-7bbd05799acf)
+
