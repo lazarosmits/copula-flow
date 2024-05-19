@@ -104,7 +104,7 @@ vine_5d = flow_vine.flow_mixed_vine(n_dims=dim)
       
 ```
 
-After fitting we can visualize the margins, the emprical copulas and the copula densities
+After fitting we can visualize the margins, the empirical copulas and the copula densities
 
 ```python
 # plot histograms of the flow margins s the real margins
@@ -184,6 +184,7 @@ plt.suptitle('Flow Copula densities')
 plt.show()
 ```
 
+![flow_cops_5d](https://github.com/lazarosmits/copula-flow/assets/68554438/9ffd0df5-4c43-4d7b-8b33-f096c53a7911)
 
 
 
