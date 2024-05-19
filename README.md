@@ -184,7 +184,8 @@ plt.suptitle('Flow Copula densities')
 plt.show()
 ```
 
-![flow_cops_5d](https://github.com/lazarosmits/copula-flow/assets/68554438/9ffd0df5-4c43-4d7b-8b33-f096c53a7911)
+![flow_cops_5d](https://github.com/lazarosmits/copula-flow/assets/68554438/96a0aa7e-4859-486f-8145-123f4fdd4491)
+
 
 
 
