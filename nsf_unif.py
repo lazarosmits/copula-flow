@@ -23,6 +23,13 @@ import edistr_funcs as edf
 device='cuda'
 class ns_flow():
     
+    '''
+    this module implements a Neural Spline Flow model (NSF) with a uniform 
+    base distribution so as to approximate the probability transform to map 
+    samples to and from copula space with uniform margins
+    
+    '''
+    
     
     def __init__(self,n_features,n_layers,n_units,dropout_pr,
                  is_continuous,n_bins=4,res_blocks=2):
@@ -30,18 +37,14 @@ class ns_flow():
 
         Parameters
         ----------
-        n_features : TYPE
-            DESCRIPTION.
-        n_layers : TYPE
-            DESCRIPTION.
-        n_units : TYPE
-            DESCRIPTION.
-        is_continuous : TYPE
-            DESCRIPTION.
+        n_features : int, corresponds to the number of dimensions of the samples
+        n_layers : int, number of layers in the NSF model
+        n_units : int, numer of hidden units in the NSF model
+        is_continuous : bool, True for continuous data, False for discrete
+        dropout_pr: float, [0,1], dropout probability in the NSF model
+        n_bins: int, corresponds to the number of knots of the splines
+        res_blocks: int, number of residual blocks in the NSF model
 
-        Returns
-        -------
-        None.
 
         '''
         self.n_features=n_features
@@ -53,17 +56,17 @@ class ns_flow():
         self.is_continuous=is_continuous
         
     def train(self,samples):
+        
         '''
-    
+        fits the NSF model to data
+        
         Parameters
         ----------
-        samples : TYPE
-            DESCRIPTION.   
+        samples : numpy array, input data dimensions-by-N_samples   
     
         Returns
         -------
-        flow_output : TYPE
-            DESCRIPTION.
+        flow: trained instance of the flow_vine class
     
         '''
         
@@ -126,6 +129,22 @@ class ns_flow():
     
     def sample(self,data,inputs_base):
         
+        '''
+        draws simulated data from a trained NSF model by transforming 
+        samples from a uniform distribution
+        
+        Parameters
+        ----------
+        data : numpy array, the samples used for training. Used for rescaling 
+               NSF samples 
+        inputs base: numpy array, samples from a uniform distribution
+    
+        Returns
+        -------
+        flow_output: samples transformed by the NSF model
+    
+        '''
+        
         # bring to scale 
         if torch.is_tensor(data):
             inputs_base = inputs_base*np.max(data.cpu().detach().numpy())
@@ -144,6 +163,23 @@ class ns_flow():
         return flow_output
     
     def transform_to_base(self,data,cond_cop=False):
+        
+        '''
+        transforms data to a uniform base distribution 
+        
+        Parameters
+        ----------
+        data : numpy array, the samples used for training. Used for rescaling 
+               NSF samples 
+        cond_cop: to be removed
+    
+        Returns
+        -------
+        base: samples transformed to base uniform by the NSF model
+        x_base: to be removed
+        
+        '''
+        
         n_samp=data.shape[0]
         data=torch.tensor(
             np.reshape(data,(int(n_samp),self.n_features)), dtype=torch.float32,
@@ -161,10 +197,26 @@ class ns_flow():
         return base, x_base
     
     def density(self,points):
+        
+        '''
+        estimates NSF density given a grid
+        
+        Parameters
+        ----------
+        points: grid
+    
+        Returns
+        -------
+        dens: NSF density on the grid provided
+        
+        
+        '''
+        
         # size= grid.shape[1]
         points=torch.tensor(points.astype(np.float32),device=device).T
         # y_grid=torch.tensor((grid[1,:]).astype(np.float32))
         # xgrid, ygrid = torch.meshgrid(x_grid, y_grid)
         # xyinput = torch.cat([xgrid.reshape(-1, 1), ygrid.reshape(-1, 1)], dim=1)
         z_dens= self.flow.log_prob(points)
-        return np.exp(z_dens.cpu().detach().numpy())
+        dens= np.exp(z_dens.cpu().detach().numpy())
+        return dens

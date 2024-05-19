@@ -12,120 +12,44 @@ from nprm_corr import kendall_matrix
 import edistr_funcs as edf
 
 
+'''
+
+This module implements a copula C-Vine model that fits Neural Spline Flows (NSF)
+for margins and copulas of joint continuous or discrete observations  
+
+'''
+
 class flow_mixed_vine():
     
     def __init__(self, n_dims):
+        
         """
+        
         Arguments:
             n_dims = number of dimensions of the vine model
             
         """    
-        self.n_dims = n_dims
-        
-    def fit_flow_margin(self,samples,n_layers,n_units,is_continuous,
-                        dropout_pr=0,cond_samples=None):
-        '''
-
-        Parameters
-        ----------
-        samples : TYPE
-            DESCRIPTION.
-        n_features : TYPE
-            DESCRIPTION.
-        n_layers : TYPE
-            DESCRIPTION.
-        n_units : TYPE
-            DESCRIPTION.
-
-        Returns
-        -------
-        flow_output : TYPE
-            DESCRIPTION.
-
-        '''
-        if samples.size>100:
-            n_samp=samples.shape[0]
-            samples=[samples]
-            n_conds= 1
-        else:
-            n_samp=samples[0].shape[0]
-            n_conds=samples.shape[0]
-            
-        flow_samples=np.empty(n_conds,dtype=object)
-        copula=np.empty(n_conds,dtype=object)
-        for i in range(n_conds):
-            flow = nsf.ns_flow(n_features=1,n_layers=n_layers,
-                              n_units=n_units,dropout_pr=dropout_pr,
-                              is_continuous=is_continuous)
-
-            flow.train(samples[i])
-
-            if np.all(cond_samples==None):
-                x_base= np.random.uniform(0,1,(n_samp,1))
-                flow_samples[i]=flow.sample(samples[i],x_base)
-                copula[i]= flow.transform_to_base(samples[i])
-            else:
-                x_base=cond_samples
-                flow_samples[i]=flow.sample(samples[i],x_base)
-                copula[i]= flow.transform_to_base(flow_samples[i])
-                
-        if n_conds>1:
-            # for j in range(len(copula)):
-            #     plt.figure(15)
-            #     plt.subplot(5,5,j+1)
-            #     plt.hist(copula[j],bins=20)
-            #     copula_tf=edf.distr_tf(flow_samples[j],copula[j])
-            #     plt.figure(16)
-            #     plt.subplot(5,5,j+1)
-            #     plt.scatter(samples[j],copula[j])
-            #     plt.figure(17)
-            #     plt.subplot(5,5,j+1)
-            #     plt.hist(copula_tf)
-            # plt.show()
-            
-            copula=np.concatenate(copula)
-            flow_samples=np.concatenate(flow_samples)
-            np.random.seed(0)
-            rnd_idx=np.random.permutation([x for x in range(len(copula))])
-            flow_samples=flow_samples[rnd_idx[:n_samp]]
-            
-            
-            if is_continuous==False:
-                copula_tf=edf.distr_tf(flow_samples,copula)
-            else:
-                copula_tf=copula
-            copula=copula[rnd_idx[:n_samp]]
-
-        else:
-            # Distributional transform in the discrete case
-            if is_continuous==False:
-                copula=edf.distr_tf(flow_samples[0],copula[0])
-            else:
-                copula=copula[0]
-            flow_samples=flow_samples[0]
-        
-        return flow_samples, copula
-        
+        self.n_dims = n_dims        
     
     def fit_flow_cond_margin(self,samples,n_layers,n_units,is_continuous,
                         cond_samples=None,dropout_pr=0):
         '''
-
+        fits a NSF model for a conditional margin or unconditional margin
+        if the conditioning set is empty (1st tree)
+        
         Parameters
         ----------
-        samples : TYPE
-            DESCRIPTION.
-        n_features : TYPE
-            DESCRIPTION.
-        n_layers : TYPE
-            DESCRIPTION.
-        n_units : TYPE
-            DESCRIPTION.
+        samples : numpy array, observation data matrix, dimensions-by-samples
+        n_layers : int, number of layers in the NSF model
+        n_units : int, number of hidden units in the NSF model
+        is_continuous : bool, True for continuous and False for discrete data
+        cond_samples: numpy array, samples of margin to condition on. None if unconditional
+        dropout_pr: float, [0,1] dropout probability for NSF model    
 
         Returns
         -------
-        flow_output : TYPE
-            DESCRIPTION.
+        flow_samples : numpy array, samples of NSF conditional margin
+        copula: numpy array, samples of the margin transformed to copula space
 
         '''
         n_samp=samples.shape[0]
@@ -148,41 +72,30 @@ class flow_mixed_vine():
         return flow_samples, copula
     
     def fit_flow_copula(self,samples,n_layers,n_units,dropout_pr=0):
+        
         '''
-
+        fits a NSF model for a bivariate copula
+        
         Parameters
         ----------
-        samples : TYPE
-            DESCRIPTION.
-        n_features : TYPE
-            DESCRIPTION.
-        n_layers : TYPE
-            DESCRIPTION.
-        n_units : TYPE
-            DESCRIPTION.
+        samples : numpy array, empirical copula samples, 2-by-n_samples
+        n_layers : int, number of layers in the NSF model
+        n_units : int, number of hidden units in the NSF model
+        dropout_pr: float, [0,1] dropout probability for NSF model  
 
         Returns
         -------
-        flow_output : TYPE
-            DESCRIPTION.
+        flow_samples : numpy array, 2-by-n_samples, samples of NSF copula
+        density : numpy array, NSF copula density function on a 200-by-200 grid
 
         '''
         n_samp=samples.shape[0]
         flows= nsf.ns_flow(n_features=2,n_layers=1,
                        n_units=16,dropout_pr=dropout_pr,
-                       res_blocks=2,n_bins=3,
+                       res_blocks=3,n_bins=2,
                        is_continuous=True)
         flows.train(samples)
-        # cfg=flow.train_CV(samples,50)
-        
-        # flows=np.empty(10,dtype=object)
-        # for i in range(10):
-        #     flow= nsf.ns_flow(n_features=2,n_layers=int(cfg[0]),
-        #                n_units=int(cfg[1]),dropout_pr=dropout_pr,
-        #                res_blocks=int(cfg[2]),
-        #                n_bins=int(cfg[3]),is_continuous=True)
-        #     flow.train(samples)
-        #     flows[i]=flow
+
         x_base= np.random.uniform(0,1,(n_samp,2))
         flow_samples= flows.sample(samples,x_base)
         xx,yy=np.meshgrid(np.linspace(0,1,200),np.linspace(0,1,200))
@@ -199,6 +112,22 @@ class flow_mixed_vine():
     
     def sort_variables(self,samples):
         
+        '''
+        sorts the variables in the joint observation data matrix 
+        in descending order according to the sums of Kendall's taus
+        
+        Parameters
+        ----------
+        samples : numpy array, unsorted observation data matrix, 
+                  dimensions-by-samples
+                  
+        Returns
+        -------
+        samples[sort_idx,:] : numpy array, sorted data matrix
+        sort_idx: list, sorting index for the variables
+        
+        '''
+        
         tau_corr=kendall_matrix(samples)
         tau_sums=np.sum(np.abs(tau_corr),axis=1)
         sorted_taus=np.sort(tau_sums)
@@ -209,6 +138,33 @@ class flow_mixed_vine():
         return samples[sort_idx,:], sort_idx
     
     def build_Cvine(self,samples, is_continuous=False):
+        
+        '''
+        builds the C-vine and fits NSF models for the copulas and margins 
+        
+        Parameters
+        ----------
+        samples : numpy array, observation data matrix, dimensions-by-N_samples 
+        is_continuous : bool, True for continuous and False for discrete data         
+                  
+        Returns 
+        -------
+        the following numpy objects with n_copulas = (dim**2-dim)/2 number 
+        of entries
+        
+            emp_copulas : numpy arrays, empirical pair copulas in the C-vine
+            copulas : numpy arrays, samples of NSF-based pair copulas in the C-vine
+            cop_dens_flow : numpy arrays, NSF-based densities of 
+                            pair copulas in the C-vine
+        
+        and also the following numpy objects with n_copulas + n_dim number 
+        of entries
+            margins: NSF-based margins of variables
+            real_margs: empirical margins of variables
+        
+        sort_idx: list, sorting index for the variables
+        
+        '''
         
         # normalizing flow parameters
         n_layers=1
