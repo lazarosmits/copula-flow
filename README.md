@@ -6,6 +6,15 @@ Given continuous or discrete joint observations, it builds a C-Vine and fits NSF
 
 
 ```python
+import numpy as np
+import flow_vine as flow_vine
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from mixedvines.copula import GaussianCopula, ClaytonCopula
+from mixedvines.mixedvine import MixedVine
+from scipy.stats import norm, gamma, poisson
+
 # Manually construct 5-D C-vine
 dim = 5  # Dimension
 vine = MixedVine(dim)
